@@ -18,7 +18,9 @@ const DOM = {
   app: document.getElementById('app'),
   grid: null, // defined after init
   search: null,
-  typeFilter: null
+  typeFilter: null,
+  filterBtn: null,
+  filterDropdown: null
 };
 
 async function init() {
@@ -27,6 +29,8 @@ async function init() {
   DOM.grid = document.getElementById('pokemon-grid');
   DOM.search = document.getElementById('search-input');
   DOM.typeFilter = document.getElementById('type-filter');
+  DOM.filterBtn = document.getElementById('filter-btn');
+  DOM.filterDropdown = document.getElementById('type-filter-dropdown');
 
   setupEventListeners();
 
@@ -87,13 +91,13 @@ function renderAppStructure() {
                 <svg class="absolute left-3 top-3.5 text-secondary w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             </div>
             
-            <div class="relative group">
+            <div class="relative">
                 <button id="filter-btn" class="w-full md:w-auto flex items-center justify-between gap-2 bg-surface border border-border px-4 py-3 rounded-lg text-sm md:text-base hover:border-accent transition-colors">
                     <span>Filter Type</span>
                     <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                 </button>
                 <!-- Dropdown -->
-                <div class="absolute right-0 top-full mt-2 w-64 bg-surface border border-border rounded-lg shadow-xl p-3 hidden group-hover:block hover:block z-40" id="type-filter-dropdown">
+                <div class="absolute right-0 top-full mt-2 w-64 bg-surface border border-border rounded-lg shadow-xl p-3 hidden z-40" id="type-filter-dropdown">
                     <div class="grid grid-cols-2 gap-2" id="type-filter-options">
                         <!-- Options injected -->
                     </div>
@@ -108,7 +112,7 @@ function renderAppStructure() {
     </header>
     
     <main class="max-w-7xl mx-auto px-4 py-8 min-h-[calc(100vh-80px)]">
-      <div id="pokemon-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+      <div id="pokemon-grid" class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
         <!-- Cards injected -->
       </div>
     </main>
@@ -142,6 +146,17 @@ function setupEventListeners() {
     STATE.filters.search = e.target.value.toLowerCase().trim();
     applyFilters();
   }, 300));
+
+  DOM.filterBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    DOM.filterDropdown.classList.toggle('hidden');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!DOM.filterDropdown) return;
+    const clickedInside = e.target.closest('#filter-btn') || e.target.closest('#type-filter-dropdown');
+    if (!clickedInside) DOM.filterDropdown.classList.add('hidden');
+  });
 
   DOM.grid.addEventListener('click', async (e) => {
     const card = e.target.closest('.pokemon-card');
