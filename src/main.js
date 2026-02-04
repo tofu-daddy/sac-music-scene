@@ -61,6 +61,11 @@ async function init() {
     STATE.filteredPokemon = STATE.allPokemon;
     STATE.loading = false;
 
+    gtag('event', 'pokédex_loaded', {
+      'total_pokémon': STATE.allPokemon.length,
+      'types_available': STATE.types.length
+    });
+
     updateDisplay();
 
   } catch (error) {
@@ -134,8 +139,17 @@ function renderTypeFilters() {
   // Add logic to checkboxes
   document.querySelectorAll('.type-checkbox').forEach(cb => {
     cb.addEventListener('change', (e) => {
-      if (e.target.checked) STATE.filters.selectedTypes.add(e.target.value);
-      else STATE.filters.selectedTypes.delete(e.target.value);
+      if (e.target.checked) {
+        STATE.filters.selectedTypes.add(e.target.value);
+        gtag('event', 'type_filter_added', {
+          'pokemon_type': e.target.value
+        });
+      } else {
+        STATE.filters.selectedTypes.delete(e.target.value);
+        gtag('event', 'type_filter_removed', {
+          'pokemon_type': e.target.value
+        });
+      }
       applyFilters();
     });
   });
@@ -144,6 +158,12 @@ function renderTypeFilters() {
 function setupEventListeners() {
   DOM.search.addEventListener('input', debounce((e) => {
     STATE.filters.search = e.target.value.toLowerCase().trim();
+    if (STATE.filters.search) {
+      gtag('event', 'pokemon_search', {
+        'search_term': STATE.filters.search,
+        'results_count': STATE.filteredPokemon.length
+      });
+    }
     applyFilters();
   }, 300));
 
@@ -164,6 +184,11 @@ function setupEventListeners() {
       const id = card.dataset.id;
       const pokemon = STATE.allPokemon.find(p => p.id == id);
       if (pokemon) {
+        gtag('event', 'pokemon_viewed', {
+          'pokemon_id': id,
+          'pokemon_name': pokemon.name,
+          'pokemon_types': pokemon.types.map(t => t.type.name).join(',')
+        });
         openModal(pokemon);
       }
     }
