@@ -111,6 +111,14 @@ function syncSearchToUrl() {
   window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
 }
 
+function isUpcomingEvent(event) {
+  if (!event?.localDate) return true;
+  const iso = `${event.localDate}T${event.localTime || '23:59:59'}`;
+  const eventDate = new Date(iso);
+  if (Number.isNaN(eventDate.getTime())) return true;
+  return eventDate.getTime() >= Date.now();
+}
+
 async function init() {
   renderAppStructure();
   trackPageView();
@@ -369,6 +377,7 @@ function applyFilters() {
   const { search, selectedSources } = STATE.filters;
 
   STATE.filteredEvents = STATE.allEvents.filter(event => {
+    const matchesUpcoming = isUpcomingEvent(event);
     const matchesSearch = !search || [
       event.name,
       event.venue?.name,
@@ -377,7 +386,7 @@ function applyFilters() {
     ].filter(Boolean).some(value => value.toLowerCase().includes(search));
 
     const matchesSource = selectedSources.size === 0 || (event.source && selectedSources.has(event.source));
-    return matchesSearch && matchesSource;
+    return matchesUpcoming && matchesSearch && matchesSource;
   });
 
   syncSearchToUrl();
