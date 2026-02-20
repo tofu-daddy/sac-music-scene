@@ -175,7 +175,7 @@ export function renderModal(event) {
               <div class="text-sm mt-1">${safeAddress}</div>
             </div>
             <div class="mt-6 flex gap-3">
-              ${safeTicketUrl ? `<a href="${safeTicketUrl}" target="_blank" rel="noopener" class="px-4 py-2 rounded-lg bg-accent text-black font-semibold hover:bg-accent-hover transition-colors">Get tickets</a>` : ''}
+              ${safeTicketUrl ? `<a id="ticket-link" href="${safeTicketUrl}" target="_blank" rel="noopener" class="px-4 py-2 rounded-lg bg-accent text-black font-semibold hover:bg-accent-hover transition-colors">Get tickets</a>` : ''}
               <button class="px-4 py-2 rounded-lg border border-border text-secondary hover:text-white hover:border-accent transition-colors" id="close-modal-secondary">Close</button>
             </div>
           </div>

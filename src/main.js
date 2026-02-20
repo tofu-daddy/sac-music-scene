@@ -2,6 +2,7 @@ import './style.css';
 import { fetchMusicEvents } from './api.js';
 import { renderGrid, renderModal } from './ui.js';
 import { debounce } from './utils.js';
+import { trackEvent, trackPageView } from './analytics.js';
 
 const STATE = {
   allEvents: [],
@@ -40,6 +41,8 @@ const DOM = {
   activeFilters: null,
   resultsCount: null
 };
+
+let lastTrackedSearch = '';
 
 const escapeHtml = (value) => String(value ?? '')
   .replace(/&/g, '&amp;')
@@ -93,8 +96,24 @@ function buildLandmarkLayer() {
   }).join('');
 }
 
+function getInitialSearchTerm() {
+  const params = new URLSearchParams(window.location.search);
+  return (params.get('q') || '').trim();
+}
+
+function syncSearchToUrl() {
+  const url = new URL(window.location.href);
+  if (STATE.filters.search) {
+    url.searchParams.set('q', STATE.filters.search);
+  } else {
+    url.searchParams.delete('q');
+  }
+  window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+}
+
 async function init() {
   renderAppStructure();
+  trackPageView();
 
   DOM.grid = document.getElementById('event-grid');
   DOM.search = document.getElementById('search-input');
@@ -103,6 +122,13 @@ async function init() {
   DOM.clearFilters = document.getElementById('clear-filters');
   DOM.activeFilters = document.getElementById('active-filters');
   DOM.resultsCount = document.getElementById('results-count');
+
+  const initialSearch = getInitialSearchTerm();
+  if (initialSearch) {
+    STATE.filters.search = initialSearch.toLowerCase();
+    lastTrackedSearch = initialSearch;
+    DOM.search.value = initialSearch;
+  }
 
   setupEventListeners();
 
@@ -128,6 +154,9 @@ async function init() {
   STATE.allEvents = events;
   STATE.filteredEvents = events;
   STATE.sources = buildSources(events);
+  trackEvent('shows_loaded', {
+    count: events.length
+  });
   renderSourceFilters();
   updateDisplay();
 }
@@ -239,11 +268,17 @@ function renderSourceFilters() {
 
   document.querySelectorAll('.source-checkbox').forEach(cb => {
     cb.addEventListener('change', (e) => {
+      const sourceValue = e.target.value;
       if (e.target.checked) {
-        STATE.filters.selectedSources.add(e.target.value);
+        STATE.filters.selectedSources.add(sourceValue);
       } else {
-        STATE.filters.selectedSources.delete(e.target.value);
+        STATE.filters.selectedSources.delete(sourceValue);
       }
+      trackEvent('venue_filter_change', {
+        venue: SOURCE_LABELS[sourceValue] || sourceValue,
+        selected: e.target.checked,
+        selected_count: STATE.filters.selectedSources.size
+      });
       applyFilters();
     });
   });
@@ -275,13 +310,24 @@ function setupEventListeners() {
   }, { passive: true });
 
   DOM.search.addEventListener('input', debounce((e) => {
-    STATE.filters.search = e.target.value.toLowerCase().trim();
+    const rawValue = e.target.value.trim();
+    STATE.filters.search = rawValue.toLowerCase();
+    if (rawValue !== lastTrackedSearch) {
+      lastTrackedSearch = rawValue;
+      trackEvent('search', {
+        search_term: rawValue,
+        search_length: rawValue.length
+      });
+    }
     applyFilters();
   }, 300));
 
   DOM.sourceFilterBtn.addEventListener('click', (e) => {
     e.preventDefault();
     DOM.sourceDropdown.classList.toggle('hidden');
+    trackEvent('venue_filter_dropdown_toggle', {
+      opened: !DOM.sourceDropdown.classList.contains('hidden')
+    });
   });
 
   document.addEventListener('click', (e) => {
@@ -292,12 +338,19 @@ function setupEventListeners() {
   });
 
   DOM.clearFilters.addEventListener('click', () => {
+    const hadSearch = Boolean(STATE.filters.search);
+    const hadSelectedVenues = STATE.filters.selectedSources.size > 0;
     STATE.filters.search = '';
     STATE.filters.selectedSources.clear();
 
     DOM.search.value = '';
+    lastTrackedSearch = '';
     document.querySelectorAll('.source-checkbox').forEach(cb => {
       cb.checked = false;
+    });
+    trackEvent('clear_filters', {
+      had_search: hadSearch,
+      had_selected_venues: hadSelectedVenues
     });
     applyFilters();
   });
@@ -325,6 +378,7 @@ function applyFilters() {
     return matchesSearch && matchesSource;
   });
 
+  syncSearchToUrl();
   updateDisplay();
 }
 
@@ -351,11 +405,17 @@ function updateDisplay() {
   updateActiveFilters();
   DOM.resultsCount.textContent = STATE.filteredEvents.length;
   renderGrid(STATE.filteredEvents, DOM.grid);
+  updateEventSchema(STATE.filteredEvents);
 }
 
 function openModal(event) {
   const container = document.getElementById('modal-container');
   container.innerHTML = renderModal(event);
+  trackEvent('show_details_open', {
+    event_id: event.id,
+    event_name: event.name,
+    venue: event.venue?.name || 'unknown'
+  });
 
   const closeModal = () => {
     document.removeEventListener('keydown', onKeyDown);
@@ -368,13 +428,73 @@ function openModal(event) {
   const closeBtn = document.getElementById('close-modal');
   const closeBtnSecondary = document.getElementById('close-modal-secondary');
   const backdrop = document.getElementById('modal-backdrop');
+  const ticketLink = document.getElementById('ticket-link');
 
   closeBtn?.addEventListener('click', closeModal);
   closeBtnSecondary?.addEventListener('click', closeModal);
+  ticketLink?.addEventListener('click', () => {
+    trackEvent('select_content', {
+      content_type: 'ticket_link',
+      item_id: event.id,
+      item_name: event.name,
+      venue: event.venue?.name || 'unknown'
+    });
+    trackEvent('outbound_click', {
+      destination: event.url || '',
+      event_id: event.id
+    });
+  });
   backdrop?.addEventListener('click', (e) => {
     if (e.target === backdrop) closeModal();
   });
   document.addEventListener('keydown', onKeyDown);
+}
+
+function updateEventSchema(events) {
+  const scriptId = 'event-schema-jsonld';
+  const existing = document.getElementById(scriptId);
+  const topEvents = events.slice(0, 25);
+  const schema = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Sacramento Music Shows',
+    itemListElement: topEvents.map((event, index) => {
+      const location = {
+        '@type': 'Place',
+        name: event.venue?.name || 'Venue TBA',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: event.venue?.address || '',
+          addressLocality: event.venue?.city || '',
+          addressRegion: event.venue?.state || '',
+          postalCode: event.venue?.postalCode || '',
+          addressCountry: 'US'
+        }
+      };
+      const startDate = event.localDate
+        ? `${event.localDate}T${event.localTime || '19:00'}:00`
+        : undefined;
+
+      return {
+        '@type': 'ListItem',
+        position: index + 1,
+        item: {
+          '@type': 'MusicEvent',
+          name: event.name,
+          startDate,
+          eventStatus: 'https://schema.org/EventScheduled',
+          location,
+          url: event.url || 'https://tofu-daddy.github.io/sac-music-scene/'
+        }
+      };
+    })
+  };
+
+  const script = existing || document.createElement('script');
+  script.type = 'application/ld+json';
+  script.id = scriptId;
+  script.textContent = JSON.stringify(schema);
+  if (!existing) document.head.appendChild(script);
 }
 
 init();

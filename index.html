@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
-    <meta name="description" content="Discover local music shows around Sacramento. Filter by venue, view details, and jump to tickets in one place." />
+    <meta name="description" content="Sacramento live music calendar with upcoming concerts, local venue shows, and direct ticket links. Search and filter by venue in one place." />
     <meta name="keywords" content="Sacramento music shows, live music Sacramento, concerts Sacramento, local venues, music events" />
     
     <!-- Essential SEO Meta Tags -->
@@ -26,6 +26,7 @@
     <meta property="og:description" content="Find local Sacramento music shows, filter by venue, and jump to tickets." />
     <meta property="og:url" content="https://tofu-daddy.github.io/sac-music-scene/" />
     <meta property="og:site_name" content="SAC MUSIC SCENE" />
+    <meta property="og:updated_time" content="2026-02-20T00:00:00Z" />
     <meta property="og:locale" content="en_US" />
     <meta property="og:image" content="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=1200&q=80" />
     <meta property="og:image:width" content="1200" />
@@ -56,7 +57,10 @@
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-      gtag('config', 'G-J2TZ88ZKBC');
+      gtag('config', 'G-J2TZ88ZKBC', {
+        anonymize_ip: true,
+        send_page_view: true
+      });
     </script>
     
     <!-- Structured Data (JSON-LD) for AI & Search Engines -->
@@ -73,6 +77,32 @@
         "name": "SAC MUSIC SCENE"
       },
       "inLanguage": "en-US"
+    }
+    </script>
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "SAC MUSIC SCENE",
+      "url": "https://tofu-daddy.github.io/sac-music-scene/",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://tofu-daddy.github.io/sac-music-scene/?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "SAC MUSIC SCENE",
+      "url": "https://tofu-daddy.github.io/sac-music-scene/",
+      "sameAs": [
+        "https://github.com/tofu-daddy/sac-music-scene"
+      ]
     }
     </script>
     
