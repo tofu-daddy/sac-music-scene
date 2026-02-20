@@ -1,154 +1,248 @@
 import './style.css';
-import { fetchPokemonList, fetchPokemonDetails, fetchAllTypes } from './api.js';
-import { renderGrid, renderModal, hydratePokemonTypes } from './ui.js';
+import { fetchMusicEvents } from './api.js';
+import { renderGrid, renderModal } from './ui.js';
 import { debounce } from './utils.js';
 
 const STATE = {
-  allPokemon: [], // { name, url, id, types: [], ... } full details
-  filteredPokemon: [],
-  types: [],
+  allEvents: [],
+  filteredEvents: [],
+  sources: [],
   filters: {
     search: '',
-    selectedTypes: new Set()
-  },
-  loading: true
+    selectedSources: new Set()
+  }
+};
+
+const AVAILABLE_SOURCES = [
+  'harlows',
+  'cafe_colonial',
+  'channel_24',
+  'goldfield_trading_post',
+  'old_ironsides'
+];
+
+const SOURCE_LABELS = {
+  harlows: "Harlow's",
+  ace_of_spades: 'Ace of Spades',
+  cafe_colonial: 'Cafe Colonial',
+  channel_24: 'Channel 24',
+  goldfield_trading_post: 'Goldfield Trading Post',
+  old_ironsides: 'Old Ironsides'
 };
 
 const DOM = {
   app: document.getElementById('app'),
-  grid: null, // defined after init
+  grid: null,
   search: null,
-  typeFilter: null,
-  filterBtn: null,
-  filterDropdown: null
+  sourceFilterBtn: null,
+  sourceDropdown: null,
+  clearFilters: null,
+  activeFilters: null,
+  resultsCount: null
 };
+
+const escapeHtml = (value) => String(value ?? '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
+
+const LANDMARK_SKETCHES = [
+  '/landmarks/sac-01.png',
+  '/landmarks/sac-02.png',
+  '/landmarks/sac-03.png',
+  '/landmarks/sac-04.png',
+  '/landmarks/sac-05.png',
+  '/landmarks/sac-06.png',
+  '/landmarks/sac-07.png'
+];
+
+function buildLandmarkLayer() {
+  const placed = [];
+  return LANDMARK_SKETCHES.map((src, index) => {
+    let top = Math.round(6 + Math.random() * 68);
+    let left = Math.round(4 + Math.random() * 84);
+    let attempts = 0;
+    while (
+      attempts < 40 &&
+      placed.some((point) => {
+        const dx = point.left - left;
+        const dy = point.top - top;
+        return Math.sqrt(dx * dx + dy * dy) < 18;
+      })
+    ) {
+      top = Math.round(6 + Math.random() * 68);
+      left = Math.round(4 + Math.random() * 84);
+      attempts += 1;
+    }
+    placed.push({ top, left });
+    const width = Math.round(88 + Math.random() * 96);
+    const rotation = Math.round(-22 + Math.random() * 44);
+    const opacity = (0.1 + Math.random() * 0.17).toFixed(2);
+    const z = 1 + (index % 3);
+    return `
+      <img
+        src="${src}"
+        alt=""
+        aria-hidden="true"
+        class="landmark-sketch"
+        style="top:${top}%;left:${left}%;width:${width}px;transform:translate(-50%, -50%) rotate(${rotation}deg);opacity:${opacity};z-index:${z};"
+      >
+    `;
+  }).join('');
+}
 
 async function init() {
   renderAppStructure();
 
-  DOM.grid = document.getElementById('pokemon-grid');
+  DOM.grid = document.getElementById('event-grid');
   DOM.search = document.getElementById('search-input');
-  DOM.typeFilter = document.getElementById('type-filter');
-  DOM.filterBtn = document.getElementById('filter-btn');
-  DOM.filterDropdown = document.getElementById('type-filter-dropdown');
+  DOM.sourceFilterBtn = document.getElementById('source-filter-btn');
+  DOM.sourceDropdown = document.getElementById('source-filter-dropdown');
+  DOM.clearFilters = document.getElementById('clear-filters');
+  DOM.activeFilters = document.getElementById('active-filters');
+  DOM.resultsCount = document.getElementById('results-count');
 
   setupEventListeners();
 
-  try {
-    // 1. Fetch Types
-    const typeList = await fetchAllTypes();
-    STATE.types = typeList.map(t => t.name).filter(n => n !== 'unknown' && n !== 'shadow');
-    renderTypeFilters();
+  DOM.grid.innerHTML = `
+    <div class="col-span-full text-center py-20">
+      <div class="inline-block w-8 h-8 border-4 border-accent border-r-transparent rounded-full animate-spin"></div>
+      <p class="mt-4 text-secondary animate-pulse">Loading Sacramento shows...</p>
+    </div>
+  `;
 
-    // 2. Fetch Pokemon List
-    // Show loading state
-    DOM.grid.innerHTML = '<div class="col-span-full text-center py-20"><div class="inline-block w-8 h-8 border-4 border-accent border-r-transparent rounded-full animate-spin"></div><p class="mt-4 text-secondary animate-pulse">Catching them all...</p></div>';
-
-    // We fetch 151 (Gen 1)
-    const basicList = await fetchPokemonList(151);
-
-    // 3. Fetch details for all (for filtering capability)
-    // We do this in batches to avoid network congestion, though 150 is manageable.
-    const detailsPromises = basicList.map(p => fetchPokemonDetails(p.url));
-    const allDetails = await Promise.all(detailsPromises);
-
-    // Enrich data
-    STATE.allPokemon = allDetails.filter(p => p !== null).map(p => ({
-      ...p,
-      // Add any extra normalized fields if needed
-    }));
-
-    STATE.filteredPokemon = STATE.allPokemon;
-    STATE.loading = false;
-
-    gtag('event', 'pokédex_loaded', {
-      'total_pokémon': STATE.allPokemon.length,
-      'types_available': STATE.types.length
-    });
-
-    updateDisplay();
-
-  } catch (error) {
-    console.error('Init error:', error);
-    DOM.grid.innerHTML = '<div class="col-span-full text-center text-red-500">Failed to load Pokémon data. Please refresh using the circular arrow in your browser toolbar to try again.</div>';
+  const { events, error } = await fetchMusicEvents();
+  if (error) {
+    const safeError = escapeHtml(error);
+    DOM.grid.innerHTML = `
+      <div class="col-span-full text-center py-16">
+        <p class="text-lg font-semibold">Unable to load shows.</p>
+        <p class="text-secondary text-sm mt-2">${safeError}</p>
+      </div>
+    `;
+    return;
   }
+
+  STATE.allEvents = events;
+  STATE.filteredEvents = events;
+  STATE.sources = buildSources(events);
+  renderSourceFilters();
+  updateDisplay();
+}
+
+function buildSources(events) {
+  const sourceSet = new Set(AVAILABLE_SOURCES);
+  events.forEach(event => {
+    if (event.source) sourceSet.add(event.source);
+  });
+  return Array.from(sourceSet).sort((a, b) => {
+    const labelA = SOURCE_LABELS[a] || a;
+    const labelB = SOURCE_LABELS[b] || b;
+    return labelA.localeCompare(labelB);
+  });
 }
 
 function renderAppStructure() {
   DOM.app.innerHTML = `
-    <header class="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border shadow-md">
-      <div class="max-w-5xl mx-auto px-4 py-6">
-        <div class="flex flex-col items-center text-center gap-3">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-accent rounded-full flex items-center justify-center text-white font-bold animate-pulse">P</div>
-            <h1 class="text-4xl md:text-5xl font-bold tracking-tight">Pokédex</h1>
-          </div>
-          <p class="text-secondary text-sm md:text-base max-w-xl">
-            Search the original 151 and filter by type.
-          </p>
+    <div class="ambient-bg"></div>
+    <header id="site-header" class="sticky top-0 z-30 bg-background/90 backdrop-blur border-b border-border">
+      <div class="header-inner max-w-6xl mx-auto px-4 py-6">
+        <div class="landmark-collage" aria-hidden="true">
+          ${buildLandmarkLayer()}
         </div>
-
-        <div class="mt-6 bg-surface/70 border border-border rounded-2xl p-4 md:p-5 shadow-lg">
-          <div class="flex flex-col md:flex-row gap-3 md:items-center">
-            <div class="relative flex-1">
-                <input type="text" id="search-input" placeholder="Search by name or ID..." 
-                    class="w-full bg-surface border border-border rounded-lg pl-10 pr-4 py-3 text-sm md:text-base focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all placeholder:text-secondary/50">
-                <svg class="absolute left-3 top-3.5 text-secondary w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-            </div>
-            
-            <div class="relative">
-                <button id="filter-btn" class="w-full md:w-auto flex items-center justify-between gap-2 bg-surface border border-border px-4 py-3 rounded-lg text-sm md:text-base hover:border-accent transition-colors">
-                    <span>Filter Type</span>
-                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                </button>
-                <!-- Dropdown -->
-                <div class="absolute right-0 top-full mt-2 w-64 bg-surface border border-border rounded-lg shadow-xl p-3 hidden z-40" id="type-filter-dropdown">
-                    <div class="grid grid-cols-2 gap-2" id="type-filter-options">
-                        <!-- Options injected -->
-                    </div>
+        <div class="flex flex-col gap-6">
+          <div class="hero-shell flex flex-col gap-5">
+            <div>
+              <p class="eyebrow">Sacramento, CA</p>
+              <div class="hero-title-wrap">
+                <h1 class="hero-title mt-3 font-semibold">SAC MUSIC SCENE</h1>
+                <div class="hero-orbit hero-orbit-collage" aria-hidden="true">
+                  <svg viewBox="0 0 160 160" class="hero-orbit-svg">
+                    <defs>
+                      <path id="hero-orbit-path" d="M80,80 m-57,0 a57,57 0 1,1 114,0 a57,57 0 1,1 -114,0" />
+                    </defs>
+                    <text class="hero-orbit-text">
+                      <textPath href="#hero-orbit-path" startOffset="0%" textLength="358" lengthAdjust="spacing">
+                        LIVE WEEKLY • SACRAMENTO.CA • LIVE WEEKLY • SACRAMENTO.CA •
+                      </textPath>
+                    </text>
+                  </svg>
                 </div>
+              </div>
+              <p class="hero-sub mt-4">
+                The city after dark. One feed for club nights, touring acts, and local lineups.
+              </p>
+            </div>
+            <div class="hero-right">
+              <div class="stat-card">
+                <div class="text-xs uppercase tracking-[0.2em] text-secondary">Shows found</div>
+                <div class="text-3xl font-semibold mt-2" id="results-count">--</div>
+              </div>
             </div>
           </div>
 
-          <!-- Active Filters -->
-          <div id="active-filters" class="flex gap-2 flex-wrap mt-3 hidden text-sm"></div>
+          <div class="filter-panel">
+            <div class="flex flex-col lg:flex-row gap-3 lg:items-center">
+              <div class="relative flex-1">
+                <input type="text" id="search-input" placeholder="Search by artist, venue, or keyword"
+                  class="w-full bg-surface border border-border rounded-lg pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all placeholder:text-secondary/60">
+                <svg class="absolute left-3 top-3.5 text-secondary w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3 lg:flex lg:gap-3">
+                <div class="relative">
+                  <button id="source-filter-btn" class="w-full lg:w-auto flex items-center justify-between gap-2 bg-surface border border-border px-4 py-3 rounded-lg text-sm hover:border-accent transition-colors min-w-0 lg:min-w-[180px]">
+                    <span>Filter Venues</span>
+                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                  </button>
+                  <div class="absolute right-0 top-full mt-2 w-72 bg-surface border border-border rounded-lg shadow-xl p-3 hidden z-40" id="source-filter-dropdown">
+                    <div class="grid grid-cols-1 gap-2" id="source-filter-options"></div>
+                  </div>
+                </div>
+
+                <button id="clear-filters" class="w-full text-sm px-4 py-3 border border-border rounded-lg text-secondary hover:text-white hover:border-accent transition-colors">
+                  Clear filters
+                </button>
+              </div>
+            </div>
+
+            <div id="active-filters" class="flex gap-2 flex-wrap mt-3 hidden text-sm"></div>
+          </div>
         </div>
       </div>
     </header>
-    
-    <main class="max-w-7xl mx-auto px-4 py-8 min-h-[calc(100vh-80px)]">
-      <div id="pokemon-grid" class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+
+    <main class="max-w-6xl mx-auto px-4 py-8 min-h-[calc(100vh-120px)]">
+      <div id="event-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <!-- Cards injected -->
       </div>
     </main>
 
-    <!-- Modal Container -->
+    <footer class="max-w-6xl mx-auto px-4 pb-10 text-xs text-secondary">
+      Data scraped from venue sites. Always confirm details on the ticketing page.
+    </footer>
+
     <div id="modal-container"></div>
   `;
 }
 
-function renderTypeFilters() {
-  const container = document.getElementById('type-filter-options');
-  container.innerHTML = STATE.types.map(type => `
-        <label class="flex items-center gap-2 cursor-pointer p-1 hover:bg-white/5 rounded">
-            <input type="checkbox" value="${type}" class="type-checkbox rounded border-gray-600 text-accent focus:ring-accent bg-transparent">
-            <span class="capitalize text-secondary">${type}</span>
-        </label>
-    `).join('');
+function renderSourceFilters() {
+  const container = document.getElementById('source-filter-options');
+  container.innerHTML = STATE.sources.map(source => `
+    <label class="flex items-center gap-2 cursor-pointer p-1 hover:bg-white/5 rounded">
+      <input type="checkbox" value="${escapeHtml(source)}" class="source-checkbox rounded border-gray-600 text-accent focus:ring-accent bg-transparent">
+      <span class="text-secondary text-sm">${escapeHtml(SOURCE_LABELS[source] || source.replace(/_/g, ' '))}</span>
+    </label>
+  `).join('');
 
-  // Add logic to checkboxes
-  document.querySelectorAll('.type-checkbox').forEach(cb => {
+  document.querySelectorAll('.source-checkbox').forEach(cb => {
     cb.addEventListener('change', (e) => {
       if (e.target.checked) {
-        STATE.filters.selectedTypes.add(e.target.value);
-        gtag('event', 'type_filter_added', {
-          'pokemon_type': e.target.value
-        });
+        STATE.filters.selectedSources.add(e.target.value);
       } else {
-        STATE.filters.selectedTypes.delete(e.target.value);
-        gtag('event', 'type_filter_removed', {
-          'pokemon_type': e.target.value
-        });
+        STATE.filters.selectedSources.delete(e.target.value);
       }
       applyFilters();
     });
@@ -156,108 +250,131 @@ function renderTypeFilters() {
 }
 
 function setupEventListeners() {
+  const header = document.getElementById('site-header');
+  let condensed = false;
+  let rafId = null;
+  const syncHeaderState = () => {
+    if (!header) return;
+    const y = window.scrollY;
+    // Hysteresis avoids rapid state flipping around one threshold.
+    if (!condensed && y > 84) {
+      condensed = true;
+      header.classList.add('is-condensed');
+    } else if (condensed && y < 40) {
+      condensed = false;
+      header.classList.remove('is-condensed');
+    }
+  };
+  syncHeaderState();
+  window.addEventListener('scroll', () => {
+    if (rafId) return;
+    rafId = window.requestAnimationFrame(() => {
+      syncHeaderState();
+      rafId = null;
+    });
+  }, { passive: true });
+
   DOM.search.addEventListener('input', debounce((e) => {
     STATE.filters.search = e.target.value.toLowerCase().trim();
-    if (STATE.filters.search) {
-      gtag('event', 'pokemon_search', {
-        'search_term': STATE.filters.search,
-        'results_count': STATE.filteredPokemon.length
-      });
-    }
     applyFilters();
   }, 300));
 
-  DOM.filterBtn.addEventListener('click', (e) => {
+  DOM.sourceFilterBtn.addEventListener('click', (e) => {
     e.preventDefault();
-    DOM.filterDropdown.classList.toggle('hidden');
+    DOM.sourceDropdown.classList.toggle('hidden');
   });
 
   document.addEventListener('click', (e) => {
-    if (!DOM.filterDropdown) return;
-    const clickedInside = e.target.closest('#filter-btn') || e.target.closest('#type-filter-dropdown');
-    if (!clickedInside) DOM.filterDropdown.classList.add('hidden');
+    if (DOM.sourceDropdown) {
+      const clickedSource = e.target.closest('#source-filter-btn') || e.target.closest('#source-filter-dropdown');
+      if (!clickedSource) DOM.sourceDropdown.classList.add('hidden');
+    }
   });
 
-  DOM.grid.addEventListener('click', async (e) => {
-    const card = e.target.closest('.pokemon-card');
-    if (card) {
-      const id = card.dataset.id;
-      const pokemon = STATE.allPokemon.find(p => p.id == id);
-      if (pokemon) {
-        gtag('event', 'pokemon_viewed', {
-          'pokemon_id': id,
-          'pokemon_name': pokemon.name,
-          'pokemon_types': pokemon.types.map(t => t.type.name).join(',')
-        });
-        openModal(pokemon);
-      }
-    }
+  DOM.clearFilters.addEventListener('click', () => {
+    STATE.filters.search = '';
+    STATE.filters.selectedSources.clear();
+
+    DOM.search.value = '';
+    document.querySelectorAll('.source-checkbox').forEach(cb => {
+      cb.checked = false;
+    });
+    applyFilters();
+  });
+
+  DOM.grid.addEventListener('click', (e) => {
+    const card = e.target.closest('.event-card');
+    if (!card) return;
+    const event = STATE.allEvents.find(item => item.id === card.dataset.id);
+    if (event) openModal(event);
   });
 }
 
 function applyFilters() {
-  const { search, selectedTypes } = STATE.filters;
+  const { search, selectedSources } = STATE.filters;
 
-  STATE.filteredPokemon = STATE.allPokemon.filter(p => {
-    const matchesSearch = p.name.includes(search) || String(p.id) === search;
-    const matchesType = selectedTypes.size === 0 || p.types.some(t => selectedTypes.has(t.type.name));
-    return matchesSearch && matchesType;
+  STATE.filteredEvents = STATE.allEvents.filter(event => {
+    const matchesSearch = !search || [
+      event.name,
+      event.venue?.name,
+      event.venue?.city,
+      event.venue?.state
+    ].filter(Boolean).some(value => value.toLowerCase().includes(search));
+
+    const matchesSource = selectedSources.size === 0 || (event.source && selectedSources.has(event.source));
+    return matchesSearch && matchesSource;
   });
 
   updateDisplay();
 }
 
-function updateDisplay() {
-  // Update active filter tags
-  const activeContainer = document.getElementById('active-filters');
-  if (STATE.filters.selectedTypes.size > 0) {
-    activeContainer.classList.remove('hidden');
-    activeContainer.innerHTML = Array.from(STATE.filters.selectedTypes).map(t => `
-        <span class="bg-accent/20 text-accent border border-accent/50 text-xs px-2 py-1 rounded-full flex items-center gap-1">
-            ${t}
-            <button onclick="document.querySelector('input[value=${t}]').click()" class="hover:text-white">&times;</button>
-        </span>
-      `).join('');
-  } else {
-    activeContainer.classList.add('hidden');
+function updateActiveFilters() {
+  const active = [];
+  if (STATE.filters.search) active.push(`Search: "${STATE.filters.search}"`);
+  if (STATE.filters.selectedSources.size) {
+    active.push(...Array.from(STATE.filters.selectedSources).map(s => SOURCE_LABELS[s] || s.replace(/_/g, ' ')));
   }
 
-  // Render Grid
-  // Pass the full pokemon object which includes types and sprites
-  renderGrid(STATE.filteredPokemon, DOM.grid);
+  if (!active.length) {
+    DOM.activeFilters.classList.add('hidden');
+    DOM.activeFilters.innerHTML = '';
+    return;
+  }
+
+  DOM.activeFilters.classList.remove('hidden');
+  DOM.activeFilters.innerHTML = active.map(label => `
+    <span class="bg-accent/20 text-accent border border-accent/50 text-xs px-2 py-1 rounded-full">${escapeHtml(label)}</span>
+  `).join('');
 }
 
-async function openModal(pokemon) {
-  // We need species data for flavor text
+function updateDisplay() {
+  updateActiveFilters();
+  DOM.resultsCount.textContent = STATE.filteredEvents.length;
+  renderGrid(STATE.filteredEvents, DOM.grid);
+}
+
+function openModal(event) {
   const container = document.getElementById('modal-container');
-  container.innerHTML = '<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"><div class="animate-spin w-10 h-10 border-4 border-accent border-r-transparent rounded-full"></div></div>';
+  container.innerHTML = renderModal(event);
 
-  try {
-    const speciesRes = await fetch(pokemon.species.url);
-    const speciesData = await speciesRes.json();
-
-    container.innerHTML = renderModal(pokemon, speciesData);
-
-    // Close events
-    const closeBtn = document.getElementById('close-modal');
-    const backdrop = document.getElementById('modal-backdrop');
-
-    const close = () => {
-      container.innerHTML = '';
-    };
-
-    closeBtn.addEventListener('click', close);
-    backdrop.addEventListener('click', (e) => {
-      if (e.target === backdrop) close();
-    });
-    document.onkeydown = function (evt) {
-      if (evt.keyCode == 27) close();
-    };
-
-  } catch (e) {
-    console.error(e);
+  const closeModal = () => {
+    document.removeEventListener('keydown', onKeyDown);
     container.innerHTML = '';
-  }
+  };
+  const onKeyDown = (evt) => {
+    if (evt.key === 'Escape') closeModal();
+  };
+
+  const closeBtn = document.getElementById('close-modal');
+  const closeBtnSecondary = document.getElementById('close-modal-secondary');
+  const backdrop = document.getElementById('modal-backdrop');
+
+  closeBtn?.addEventListener('click', closeModal);
+  closeBtnSecondary?.addEventListener('click', closeModal);
+  backdrop?.addEventListener('click', (e) => {
+    if (e.target === backdrop) closeModal();
+  });
+  document.addEventListener('keydown', onKeyDown);
 }
 
 init();

@@ -3,70 +3,74 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
-    <meta name="description" content="Search and explore all 151 Generation 1 Pokémon with an interactive Pokédex. Filter by type, view detailed stats, abilities, height, weight, species info, and more." />
-    <meta name="keywords" content="Pokédex, Pokémon, Generation 1, Kanto region, search Pokémon, filter by type, Pokémon stats, Pokémon abilities, interactive database" />
+    <meta name="description" content="Discover local music shows around Sacramento. Filter by venue, view details, and jump to tickets in one place." />
+    <meta name="keywords" content="Sacramento music shows, live music Sacramento, concerts Sacramento, local venues, music events" />
     
     <!-- Essential SEO Meta Tags -->
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     <meta name="language" content="English" />
     <meta name="revisit-after" content="7 days" />
-    <meta name="author" content="Pokédex Project" />
-    <meta name="theme-color" content="#000000" />
-    <meta name="color-scheme" content="dark light" />
+    <meta name="author" content="SAC MUSIC SCENE" />
+    <meta name="theme-color" content="#0b1110" />
+    <meta name="color-scheme" content="dark" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     
     <!-- Title & Canonical -->
-    <title>Pokédex | Search 151 Gen 1 Pokémon - Interactive Database with Stats & Types</title>
-    <link rel="canonical" href="https://tofu-daddy.github.io/pokadex/" />
+    <title>SAC MUSIC SCENE | Sacramento Music Shows</title>
+    <link rel="canonical" href="https://tofu-daddy.github.io/sac-music-scene/" />
     
     <!-- Open Graph (Social Media & AI) -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Pokédex | Search & Filter 151 Generation 1 Pokémon" />
-    <meta property="og:description" content="Interactive Pokédex with complete stats, abilities, types, and details for all 151 original Pokémon. Search by name or ID, filter by type." />
-    <meta property="og:url" content="https://tofu-daddy.github.io/pokadex/" />
-    <meta property="og:site_name" content="Pokédex" />
+    <meta property="og:title" content="SAC MUSIC SCENE | Sacramento Music Shows" />
+    <meta property="og:description" content="Find local Sacramento music shows, filter by venue, and jump to tickets." />
+    <meta property="og:url" content="https://tofu-daddy.github.io/sac-music-scene/" />
+    <meta property="og:site_name" content="SAC MUSIC SCENE" />
     <meta property="og:locale" content="en_US" />
-    <meta property="og:image" content="https://raw.githubusercontent.com/PokeAPI/sprites/master/pokemon/other/official-artwork/25.png" />
-    <meta property="og:image:width" content="310" />
-    <meta property="og:image:height" content="310" />
-    <meta property="og:image:alt" content="Pikachu from Pokédex" />
+    <meta property="og:image" content="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=1200&q=80" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Live music stage lighting" />
     
     <!-- Twitter Card (Social Media & AI) -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Pokédex | Interactive Generation 1 Database" />
-    <meta name="twitter:description" content="Search, filter, and explore all 151 original Pokémon with complete stats and information." />
-    <meta name="twitter:image" content="https://raw.githubusercontent.com/PokeAPI/sprites/master/pokemon/other/official-artwork/25.png" />
-    <meta name="twitter:image:alt" content="Pokédex Database" />
-    <meta name="twitter:creator" content="@tofu_daddy" />
+    <meta name="twitter:title" content="SAC MUSIC SCENE | Sacramento Music Shows" />
+    <meta name="twitter:description" content="Find local Sacramento music shows, filter by venue." />
+    <meta name="twitter:image" content="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=1200&q=80" />
+    <meta name="twitter:image:alt" content="Live music stage lighting" />
+    <meta name="twitter:creator" content="@rivercitylive" />
     
     <!-- Preload Critical Assets -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://pokeapi.co">
-    <link rel="dns-prefetch" href="https://pokeapi.co">
+    <link rel="preconnect" href="https://app.ticketmaster.com">
+    <link rel="dns-prefetch" href="https://app.ticketmaster.com">
     <link rel="icon" type="image/svg+xml" href="./vite.svg" />
     
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;700&family=Geist+Mono:wght@500&family=Special+Gothic+Expanded+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500&family=Space+Grotesk:wght@400;500;600;700&family=Special+Gothic+Expanded+One&display=swap" rel="stylesheet">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-J2TZ88ZKBC"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-J2TZ88ZKBC');
+    </script>
     
     <!-- Structured Data (JSON-LD) for AI & Search Engines -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "WebApplication",
-      "name": "Pokédex",
-      "description": "Interactive Pokédex for searching and filtering 151 Generation 1 Pokémon with detailed stats, abilities, and information.",
-      "url": "https://tofu-daddy.github.io/pokadex/",
-      "applicationCategory": "UtilityApplication",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD"
-      },
+      "name": "SAC MUSIC SCENE",
+      "description": "Discover local Sacramento music shows, filter by venue, and view venue details.",
+      "url": "https://tofu-daddy.github.io/sac-music-scene/",
+      "applicationCategory": "EntertainmentApplication",
       "author": {
         "@type": "Person",
-        "name": "Pokédex Project"
+        "name": "SAC MUSIC SCENE"
       },
       "inLanguage": "en-US"
     }
@@ -80,14 +84,14 @@
         {
           "@type": "ListItem",
           "position": 1,
-          "name": "Home",
-          "item": "https://tofu-daddy.github.io/pokadex/"
+      "name": "Home",
+      "item": "https://tofu-daddy.github.io/sac-music-scene/"
         },
         {
           "@type": "ListItem",
           "position": 2,
-          "name": "Pokémon Database",
-          "item": "https://tofu-daddy.github.io/pokadex/"
+          "name": "Sacramento Shows",
+          "item": "https://tofu-daddy.github.io/sac-music-scene/"
         }
       ]
     }
@@ -100,39 +104,30 @@
       "mainEntity": [
         {
           "@type": "Question",
-          "name": "How do I search for a Pokémon?",
+          "name": "How do I search for a show?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Use the search bar at the top to search by Pokémon name or ID number. The database will filter results in real-time."
+            "text": "Use the search bar to filter by artist, venue, or keyword. The list updates in real time."
           }
         },
         {
           "@type": "Question",
-          "name": "Can I filter by type?",
+          "name": "Can I filter by venue?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes, click the 'Filter Type' button to select one or more types. The Pokédex will display only Pokémon matching your selected types."
+            "text": "Yes, use venue filters to narrow results."
           }
         },
         {
           "@type": "Question",
-          "name": "What information is available for each Pokémon?",
+          "name": "What details are shown for each show?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Each Pokémon includes stats (HP, Attack, Defense, etc.), abilities, height, weight, species information, and type classification."
+            "text": "Each show includes date, time, venue, and a link to tickets."
           }
         }
       ]
     }
-    </script>
-    
-    <!-- Google Analytics with Privacy -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-VQ9JQ0BZZN"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-VQ9JQ0BZZN', {'anonymize_ip': true});
     </script>
     
     <!-- Apple Touch Icon -->

@@ -1,175 +1,186 @@
-import { fetchPokemonDetails } from './api.js';
-
-const TYPE_COLORS = {
-    normal: '#A8A77A',
-    fire: '#EE8130',
-    water: '#6390F0',
-    electric: '#F7D02C',
-    grass: '#7AC74C',
-    ice: '#96D9D6',
-    fighting: '#C22E28',
-    poison: '#A33EA1',
-    ground: '#E2BF65',
-    flying: '#A98FF3',
-    psychic: '#F95587',
-    bug: '#A6B91A',
-    rock: '#B6A136',
-    ghost: '#735797',
-    dragon: '#6F35FC',
-    steel: '#B7B7CE',
-    fairy: '#D685AD',
+const STATUS_LABELS = {
+  cancelled: 'Canceled',
+  postponed: 'Postponed',
+  rescheduled: 'Rescheduled'
 };
 
-// Helper to format ID
-const formatId = (id) => `#${String(id).padStart(4, '0')}`;
-
-export const createTypeBadge = (type) => {
-    const color = TYPE_COLORS[type] || '#777';
-    return `
-    <span class="inline-block px-2 py-0.5 rounded text-xs font-bold text-white capitalize shadow-sm" style="background-color: ${color}; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
-      ${type}
-    </span>
-  `;
+const SOURCE_FALLBACK_IMAGES = {
+  channel_24: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&w=900&q=80',
+  the_boardwalk: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=900&q=80',
+  the_starlet_room: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=900&q=80',
+  ace_of_spades: 'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?auto=format&fit=crop&w=900&q=80',
+  cafe_colonial: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=900&q=80'
 };
 
-export function renderGrid(pokemonList, container) {
-    container.innerHTML = pokemonList.map(pokemon => {
-        // We can extract ID from URL to get the image without fetching details yet
-        // OR if we have the ID/details in the object, use that.
-        const id = pokemon.id || pokemon.url.split('/').filter(Boolean).pop();
-        const formattedId = formatId(id);
-        const imageUrl =
-            pokemon.sprites?.front_default ||
-            pokemon.sprites?.other?.['official-artwork']?.front_default ||
-            `https://raw.githubusercontent.com/PokeAPI/sprites/master/pokemon/${id}.png`;
+const buildEventFallbackImage = (event) => {
+  const seed = encodeURIComponent(event.id || event.name || 'live-music');
+  return `https://picsum.photos/seed/${seed}/1200/800`;
+};
 
-        // Types rendering
-        let typesHtml = '';
-        if (pokemon.types) {
-            typesHtml = pokemon.types.map(t => createTypeBadge(t.type.name)).join('');
-        }
+const escapeHtml = (value) => String(value ?? '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
 
-        // Determine URL for data attribute
-        const dataUrl = pokemon.url || `https://pokeapi.co/api/v2/pokemon/${id}/`;
+const decodeHtmlEntities = (() => {
+  const textarea = document.createElement('textarea');
+  return (value) => {
+    if (value == null) return '';
+    textarea.innerHTML = String(value);
+    return textarea.value;
+  };
+})();
 
-        return `
-      <div class="pokemon-card group relative bg-surface border border-border rounded-xl p-4 cursor-pointer transition-all duration-300 hover:border-accent hover:shadow-[0_0_15px_rgba(255,0,255,0.3)] hover:-translate-y-1" data-url="${dataUrl}" data-id="${id}">
-        <div class="absolute top-2 right-3 font-mono text-secondary font-bold text-sm">${formattedId}</div>
-        <div class="aspect-square mb-2 flex items-center justify-center">
-            <img src="${imageUrl}" alt="${pokemon.name}" loading="lazy" class="pokemon-art w-full h-full object-contain drop-shadow-md transition-transform duration-300 group-hover:scale-110">
-        </div>
-        <h3 class="text-center font-bold text-lg capitalize mb-1">${pokemon.name}</h3>
-        <div class="flex justify-center gap-1 flex-wrap mt-2" id="types-${id}">
-           ${typesHtml}
-        </div>
+const normalizeDisplayText = (value) => decodeHtmlEntities(value).replace(/\s+/g, ' ').trim();
+
+const sanitizeUrl = (value) => {
+  if (!value) return null;
+  try {
+    const parsed = new URL(value, window.location.origin);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.toString();
+    }
+  } catch (_err) {
+    return null;
+  }
+  return null;
+};
+
+const formatDateLabel = (event) => {
+  if (!event.localDate) return 'Date TBA';
+  const date = new Date(`${event.localDate}T${event.localTime || '00:00:00'}`);
+  if (Number.isNaN(date.getTime())) return 'Date TBA';
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric'
+  }).format(date);
+};
+
+const formatTimeLabel = (event) => {
+  if (event.timeTBA || !event.localDate || !event.localTime) return 'Time TBA';
+  const date = new Date(`${event.localDate}T${event.localTime}`);
+  if (Number.isNaN(date.getTime())) return 'Time TBA';
+  return new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: '2-digit'
+  }).format(date);
+};
+
+const formatVenueLine = (venue) => {
+  if (!venue) return 'Venue TBA';
+  const venueName = normalizeDisplayText(venue.name);
+  const city = normalizeDisplayText(venue.city);
+  const state = normalizeDisplayText(venue.state);
+  const parts = [venueName, city && state ? `${city}, ${state}` : null]
+    .filter(Boolean);
+  return parts.join(' • ') || 'Venue TBA';
+};
+
+export function renderGrid(events, container) {
+  if (!events.length) {
+    container.innerHTML = `
+      <div class="col-span-full text-center py-16">
+        <p class="text-lg font-semibold">No shows match those filters.</p>
+        <p class="text-secondary text-sm mt-2">Try clearing a filter.</p>
       </div>
     `;
-    }).join('');
-}
+    return;
+  }
 
-export async function hydratePokemonTypes(pokemonList) {
-    // Check if we already have types rendered (optimization)
-    // If renderGrid handled it, this might be redundant for those items.
-    // But useful for initial partial loads.
-    for (const p of pokemonList) {
-        if (p.types) continue; // Skip if we already have data
-
-        const id = p.url.split('/').filter(Boolean).pop();
-        const element = document.getElementById(`types-${id}`);
-        if (element && element.children.length === 0) {
-            try {
-                const details = await fetchPokemonDetails(p.url);
-                if (details && details.types) {
-                    element.innerHTML = details.types.map(t => createTypeBadge(t.type.name)).join('');
-                }
-            } catch (e) { console.error(e); }
-        }
-    }
-}
-
-
-export function renderModal(pokemon, species) {
-    const flavorTextEntry = species.flavor_text_entries.find(entry => entry.language.name === 'en');
-    const flavorText = flavorTextEntry ? flavorTextEntry.flavor_text.replace(/\f/g, ' ') : 'No description available.';
-
-    const formattedId = formatId(pokemon.id);
-    const typesHtml = pokemon.types.map(t => createTypeBadge(t.type.name)).join('');
-
-    const statsHtml = pokemon.stats.map(s => {
-        const name = {
-            'hp': 'HP',
-            'attack': 'ATK',
-            'defense': 'DEF',
-            'special-attack': 'SP.ATK',
-            'special-defense': 'SP.DEF',
-            'speed': 'SPD'
-        }[s.stat.name] || s.stat.name.toUpperCase();
-
-        const val = s.base_stat;
-        const percentage = Math.min(100, (val / 255) * 100); // approximate max
-
-        return `
-        <div class="flex items-center text-sm mb-1">
-            <span class="w-16 font-mono text-secondary font-bold text-xs">${name}</span>
-            <span class="w-8 font-mono font-bold text-right mr-2">${val}</span>
-            <div class="flex-1 h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                <div class="h-full bg-accent" style="width: ${percentage}%"></div>
-            </div>
-        </div>
-      `;
-    }).join('');
+  container.innerHTML = events.map((event, index) => {
+    const status = STATUS_LABELS[event.status] || null;
+    const image = sanitizeUrl(event.image)
+      || SOURCE_FALLBACK_IMAGES[event.source]
+      || buildEventFallbackImage(event);
+    const name = escapeHtml(normalizeDisplayText(event.name));
+    const venueLine = escapeHtml(formatVenueLine(event.venue));
+    const dateLabel = escapeHtml(formatDateLabel(event));
+    const timeLabel = escapeHtml(formatTimeLabel(event));
+    const statusLabel = status ? escapeHtml(status) : null;
 
     return `
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm transition-opacity" id="modal-backdrop">
-        <div class="bg-surface border border-accent rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl relative animate-in fade-in zoom-in-95 duration-300" id="modal-content">
-            <button class="absolute top-4 right-4 text-secondary hover:text-white z-10 p-2" id="close-modal">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 md:p-8">
-                <!-- Left Column: Image -->
-                <div class="flex flex-col items-center justify-center relative">
-                    <div class="font-mono text-secondary/30 text-6xl md:text-8xl font-bold absolute top-0 -z-0 opacity-20 select-none">${formattedId}</div>
-                    <img src="${pokemon.sprites.front_default || pokemon.sprites.other['official-artwork'].front_default}" alt="${pokemon.name}" class="pokemon-art w-48 h-48 md:w-64 md:h-64 object-contain z-10 drop-shadow-2xl">
-                    <div class="flex gap-2 mt-4 flex-wrap justify-center">
-                        ${typesHtml}
-                    </div>
-                </div>
-                
-                <!-- Right Column: Info -->
-                <div class="flex flex-col">
-                    <h2 class="text-3xl font-bold capitalize mb-1">${pokemon.name}</h2>
-                    <p class="text-secondary font-mono text-sm mb-4">${species.genera.find(g => g.language.name === 'en')?.genus || 'Pokémon'}</p>
-                    
-                    <p class="text-gray-300 text-sm mb-6 leading-relaxed">
-                        ${flavorText}
-                    </p>
-                    
-                    <div class="grid grid-cols-2 gap-4 mb-6">
-                        <div class="bg-black/30 p-3 rounded-lg text-center border border-border">
-                            <div class="text-secondary text-xs uppercase font-bold mb-1">Height</div>
-                            <div class="font-mono font-bold">${pokemon.height / 10}m</div>
-                        </div>
-                        <div class="bg-black/30 p-3 rounded-lg text-center border border-border">
-                            <div class="text-secondary text-xs uppercase font-bold mb-1">Weight</div>
-                            <div class="font-mono font-bold">${pokemon.weight / 10}kg</div>
-                        </div>
-                    </div>
-
-                    <div class="mb-4">
-                        <h4 class="text-sm font-bold text-secondary uppercase mb-2">Base Stats</h4>
-                        ${statsHtml}
-                    </div>
-                    
-                    <div>
-                        <h4 class="text-sm font-bold text-secondary uppercase mb-1">Abilities</h4>
-                        <div class="flex gap-2 flex-wrap">
-                            ${pokemon.abilities.map(a => `<span class="text-xs bg-black/50 px-2 py-1 rounded border border-border text-gray-300 capitalize">${a.ability.name.replace('-', ' ')}${a.is_hidden ? ' (Hidden)' : ''}</span>`).join('')}
-                        </div>
-                    </div>
-                </div>
-            </div>
+      <article class="event-card group relative bg-surface border border-border rounded-2xl overflow-hidden shadow-lg transition-all duration-300 hover:-translate-y-1 hover:border-accent" data-id="${escapeHtml(event.id)}">
+        <div class="relative h-40 overflow-hidden">
+          <img src="${image}" alt="${name}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy">
+          <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent"></div>
+          <div class="absolute left-4 bottom-4">
+            <div class="text-xs uppercase tracking-[0.2em] text-white/70"> ${dateLabel} </div>
+            <div class="text-white font-semibold text-sm">${timeLabel}</div>
+          </div>
+          ${statusLabel ? `<span class="absolute top-3 right-3 text-xs uppercase tracking-wide bg-rose-600/80 text-white px-2 py-1 rounded-full">${statusLabel}</span>` : ''}
         </div>
+        <div class="p-4">
+          <h3 class="text-lg font-semibold leading-tight">${name}</h3>
+          <p class="text-secondary text-sm mt-1">${venueLine}</p>
+          <div class="mt-4 flex items-center justify-end text-sm">
+            <button class="text-accent font-semibold hover:text-accent-hover">Details</button>
+          </div>
+        </div>
+      </article>
+    `;
+  }).join('');
+}
+
+export function renderModal(event) {
+  const addressParts = [
+    normalizeDisplayText(event.venue?.address),
+    normalizeDisplayText(event.venue?.city),
+    normalizeDisplayText(event.venue?.state),
+    normalizeDisplayText(event.venue?.postalCode)
+  ]
+    .filter(Boolean);
+  const safeImage = sanitizeUrl(event.image)
+    || SOURCE_FALLBACK_IMAGES[event.source]
+    || buildEventFallbackImage(event);
+  const safeTicketUrl = sanitizeUrl(event.url);
+  const name = escapeHtml(normalizeDisplayText(event.name));
+  const venueLine = escapeHtml(formatVenueLine(event.venue));
+  const dateLabel = escapeHtml(formatDateLabel(event));
+  const timeLabel = escapeHtml(formatTimeLabel(event));
+  const statusLabel = escapeHtml(STATUS_LABELS[event.status] || 'On Sale');
+  const safeAddress = escapeHtml(addressParts.join(', ') || 'Address TBA');
+
+  return `
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" id="modal-backdrop">
+      <div class="bg-surface border border-border rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden transition-transform duration-300">
+        <div class="flex flex-col md:flex-row">
+          <div class="md:w-1/2 h-56 md:h-auto">
+            <img src="${safeImage}" alt="${name}" class="w-full h-full object-cover">
+          </div>
+          <div class="md:w-1/2 p-6 relative">
+            <button class="absolute top-4 right-4 text-secondary hover:text-white" id="close-modal">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+            <h2 class="text-2xl font-semibold mt-2">${name}</h2>
+            <p class="text-secondary text-sm mt-2">${venueLine}</p>
+            <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+              <div class="bg-black/40 border border-border rounded-lg p-3">
+                <div class="text-secondary text-xs uppercase">Date</div>
+                <div class="font-semibold mt-1">${dateLabel}</div>
+              </div>
+              <div class="bg-black/40 border border-border rounded-lg p-3">
+                <div class="text-secondary text-xs uppercase">Time</div>
+                <div class="font-semibold mt-1">${timeLabel}</div>
+              </div>
+              <div class="bg-black/40 border border-border rounded-lg p-3">
+                <div class="text-secondary text-xs uppercase">Status</div>
+                <div class="font-semibold mt-1">${statusLabel}</div>
+              </div>
+            </div>
+            <div class="mt-4">
+              <div class="text-secondary text-xs uppercase">Address</div>
+              <div class="text-sm mt-1">${safeAddress}</div>
+            </div>
+            <div class="mt-6 flex gap-3">
+              ${safeTicketUrl ? `<a href="${safeTicketUrl}" target="_blank" rel="noopener" class="px-4 py-2 rounded-lg bg-accent text-black font-semibold hover:bg-accent-hover transition-colors">Get tickets</a>` : ''}
+              <button class="px-4 py-2 rounded-lg border border-border text-secondary hover:text-white hover:border-accent transition-colors" id="close-modal-secondary">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   `;
 }

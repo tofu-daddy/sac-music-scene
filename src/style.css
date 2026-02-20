@@ -1,22 +1,20 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #0f0f0f;
-  --color-surface: #1a1a1a;
-  --color-primary: #ffffff;
-  --color-secondary: #a0a0a0;
-  
-  --color-accent: #ff00ff;
-  --color-accent-hover: #e600e6;
-  
-  --color-border: #2a2a2a;
+  --color-background: #0b1110;
+  --color-surface: #111b1a;
+  --color-primary: #f5f1e8;
+  --color-secondary: #b9b1a6;
 
-  --font-sans: "Geist", sans-serif;
-  --font-mono: "Geist Mono", monospace;
-  --font-display: "Special Gothic Expanded One", "Geist", sans-serif;
+  --color-accent: #e13c2f;
+  --color-accent-hover: #ff5b4f;
+  --color-border: #1f2c2a;
+
+  --font-sans: "Space Grotesk", sans-serif;
+  --font-display: "Special Gothic Expanded One", serif;
+  --font-mono: "JetBrains Mono", monospace;
 }
 
-/* Custom scrollbar for webkit - keep this custom CSS */
 :root {
   color-scheme: dark;
 }
@@ -25,6 +23,7 @@ body {
   background-color: var(--color-background);
   color: var(--color-primary);
   font-family: var(--font-sans);
+  min-height: 100vh;
 }
 
 h1,
@@ -34,21 +33,279 @@ h4 {
   font-family: var(--font-display);
 }
 
+.ambient-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(225, 60, 47, 0.22), transparent 42%),
+    radial-gradient(circle at 82% 20%, rgba(26, 146, 164, 0.2), transparent 45%),
+    radial-gradient(circle at 34% 72%, rgba(126, 58, 18, 0.35), transparent 50%),
+    linear-gradient(180deg, #0b1110 0%, #0d1413 100%);
+}
+
+.eyebrow {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.35em;
+  color: var(--color-secondary);
+}
+
+.filter-panel {
+  background: rgba(17, 27, 26, 0.7);
+  border: 1px solid var(--color-border);
+  border-radius: 1.25rem;
+  padding: 1rem;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
+}
+
+.stat-card {
+  background: linear-gradient(165deg, rgba(225, 60, 47, 0.16), rgba(17, 27, 26, 0.88));
+  border: 1px solid rgba(225, 60, 47, 0.35);
+  border-radius: 1rem;
+  padding: 1rem 1.5rem;
+  min-width: 160px;
+  text-align: right;
+  box-shadow: 0 14px 32px rgba(225, 60, 47, 0.18);
+}
+
+.hero-shell {
+  transition: transform 220ms ease;
+}
+
+.header-inner {
+  position: relative;
+  isolation: isolate;
+  transition: padding 220ms ease;
+}
+
+.landmark-collage {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.landmark-sketch {
+  position: absolute;
+  height: auto;
+  filter: saturate(1.08) contrast(1.04);
+}
+
+.header-inner > .flex {
+  position: relative;
+  z-index: 2;
+}
+
+.hero-title {
+  font-size: clamp(2.4rem, 7vw, 5.2rem);
+  line-height: 0.96;
+  letter-spacing: 0.04em;
+  transform-origin: left top;
+  transition: transform 220ms ease, opacity 200ms ease;
+}
+
+.hero-sub {
+  max-width: 44rem;
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  color: var(--color-secondary);
+  transform-origin: left top;
+  transition: transform 220ms ease, opacity 200ms ease;
+}
+
+.hero-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.6rem;
+}
+
+@media (min-width: 1024px) {
+  .hero-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    column-gap: 1.25rem;
+  }
+}
+
+.hero-title-wrap {
+  position: relative;
+  display: inline-block;
+  padding-right: clamp(7.8rem, 14vw, 10rem);
+}
+
+.hero-orbit {
+  width: 148px;
+  height: 148px;
+}
+
+.hero-orbit-collage {
+  position: absolute;
+  top: -5.6rem;
+  right: 2.2rem;
+  pointer-events: none;
+}
+
+.hero-orbit-svg {
+  width: 100%;
+  height: 100%;
+  animation: orbit-spin 14s linear infinite;
+}
+
+.hero-orbit-text {
+  fill: #ff4a3a;
+  font-size: 10.5px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+#site-header.is-condensed .hero-shell {
+  transform: translateY(-1px);
+}
+
+#site-header.is-condensed .header-inner {
+  padding-top: 0.9rem;
+  padding-bottom: 0.9rem;
+}
+
+#site-header.is-condensed .landmark-sketch {
+  opacity: 0.08 !important;
+}
+
+#site-header.is-condensed .hero-title {
+  transform: scale(0.5);
+  opacity: 0.95;
+  margin-bottom: -2.45rem;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+#site-header.is-condensed .hero-sub {
+  opacity: 0.76;
+  transform: scale(0.8);
+  margin-top: -0.7rem;
+}
+
+#site-header.is-condensed .stat-card {
+  padding: 0.52rem 0.8rem;
+  min-width: 108px;
+}
+
+#site-header.is-condensed .hero-orbit {
+  width: 120px;
+  height: 120px;
+}
+
+#site-header.is-condensed .hero-orbit-collage {
+  top: -4.05rem;
+  right: 13.1rem;
+}
+
+#site-header.is-condensed .filter-panel {
+  padding: 0.8rem;
+}
+
+@media (max-width: 1023px) {
+  .landmark-sketch {
+    width: 80px !important;
+    opacity: 0.08 !important;
+  }
+
+  .hero-shell {
+    position: relative;
+    padding-right: 7.25rem;
+  }
+
+  .hero-title {
+    font-size: 3.4rem;
+  }
+
+  .hero-right {
+    position: absolute;
+    top: 0;
+    right: 0;
+    align-items: flex-end;
+  }
+
+  .stat-card {
+    padding: 0.5rem 0.75rem;
+    min-width: 82px;
+    border-radius: 0.75rem;
+  }
+
+  .stat-card .text-xs {
+    font-size: 0.52rem;
+    letter-spacing: 0.15em;
+  }
+
+  .stat-card #results-count {
+    font-size: 1.35rem;
+    margin-top: 0.2rem;
+    line-height: 1;
+  }
+
+  .hero-title-wrap {
+    padding-right: 0;
+  }
+
+  .hero-orbit-collage {
+    top: 3.3rem;
+    right: -11rem;
+    opacity: 0.9;
+  }
+
+  #site-header.is-condensed .hero-orbit-collage {
+    top: -4.7rem;
+    right: -7rem;
+  }
+
+  #site-header.is-condensed .hero-orbit {
+    width: 140px;
+    height: 140px;
+  }
+
+  #site-header.is-condensed .stat-card {
+    display: none;
+  }
+
+  #site-header.is-condensed .hero-title {
+    transform: none;
+    font-size: 1.4rem;
+    white-space: normal;
+    margin-bottom: -0.25rem;
+  }
+
+  #site-header.is-condensed .hero-sub {
+    transform: none;
+    margin-top: 0;
+  }
+}
+
+@keyframes orbit-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.accent-accent {
+  accent-color: var(--color-accent);
+}
+
 ::-webkit-scrollbar {
   width: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--color-background); 
+  background: var(--color-background);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border); 
+  background: var(--color-border);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-accent); 
-}
-
-.pokemon-art {
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
+  background: var(--color-accent);
 }

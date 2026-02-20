@@ -1,39 +1,37 @@
-const BASE_URL = 'https://pokeapi.co/api/v2';
+const DEFAULT_API_URL = import.meta.env.VITE_API_URL || '/api/shows';
+const STATIC_EVENTS_PATH = `${import.meta.env.BASE_URL}events.json`;
 
-export async function fetchPokemonList(limit = 150, offset = 0) {
-    try {
-        const response = await fetch(`${BASE_URL}/pokemon?limit=${limit}&offset=${offset}`);
-        if (!response.ok) throw new Error('Network response was not ok');
-        const data = await response.json();
-        return data.results; // Returns array of {name, url}
-    } catch (error) {
-        console.error('Error fetching Pokemon list:', error);
-        return [];
-    }
+async function fetchJson(url, signal) {
+  const response = await fetch(url, { signal });
+  if (!response.ok) throw new Error(`Network response was not ok (${response.status})`);
+  return response.json();
 }
 
-export async function fetchPokemonDetails(urlOrId) {
-    try {
-        const url = typeof urlOrId === 'string' && urlOrId.startsWith('http')
-            ? urlOrId
-            : `${BASE_URL}/pokemon/${urlOrId}`;
+export async function fetchMusicEvents({ refresh = false } = {}) {
+  const url = new URL(DEFAULT_API_URL, window.location.origin);
+  if (refresh) url.searchParams.set('refresh', '1');
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
 
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Network response was not ok');
-        return await response.json();
-    } catch (error) {
-        console.error('Error fetching Pokemon details:', error);
-        return null;
-    }
-}
-
-export async function fetchAllTypes() {
+  try {
+    const data = await fetchJson(url.toString(), controller.signal);
+    return { events: data.events || [], error: data.error || null };
+  } catch (error) {
     try {
-        const response = await fetch(`${BASE_URL}/type`);
-        const data = await response.json();
-        return data.results;
-    } catch (error) {
-        console.error('Error fetching types:', error);
-        return [];
+      const fallback = await fetchJson(STATIC_EVENTS_PATH, controller.signal);
+      return { events: fallback.events || [], error: null };
+    } catch (_fallbackError) {
+      // Keep existing error handling for local dev issues when neither source is available.
     }
+    const isTimeout = error?.name === 'AbortError';
+    console.error('Error fetching scraped events:', error);
+    return {
+      events: [],
+      error: isTimeout
+        ? 'Request timed out. Check that the Python backend is running and responsive.'
+        : 'Unable to reach the local scraper API. Start the Python backend and try again.'
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
