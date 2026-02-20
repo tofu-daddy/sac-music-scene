@@ -226,7 +226,7 @@ function renderAppStructure() {
                     <span>Filter Venues</span>
                     <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                   </button>
-                  <div class="absolute right-0 top-full mt-2 w-72 bg-surface border border-border rounded-lg shadow-xl p-3 hidden z-40" id="source-filter-dropdown">
+                  <div class="absolute left-0 lg:left-auto lg:right-0 top-full mt-2 w-72 max-w-[calc(100vw-2rem)] bg-surface border border-border rounded-lg shadow-xl p-3 hidden z-40" id="source-filter-dropdown">
                     <div class="grid grid-cols-1 gap-2" id="source-filter-options"></div>
                   </div>
                 </div>
