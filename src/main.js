@@ -52,13 +52,13 @@ const escapeHtml = (value) => String(value ?? '')
   .replace(/'/g, '&#39;');
 
 const LANDMARK_SKETCHES = [
-  '/landmarks/sac-01.png',
-  '/landmarks/sac-02.png',
-  '/landmarks/sac-03.png',
-  '/landmarks/sac-04.png',
-  '/landmarks/sac-05.png',
-  '/landmarks/sac-06.png',
-  '/landmarks/sac-07.png'
+  `${import.meta.env.BASE_URL}landmarks/sac-01.png`,
+  `${import.meta.env.BASE_URL}landmarks/sac-02.png`,
+  `${import.meta.env.BASE_URL}landmarks/sac-03.png`,
+  `${import.meta.env.BASE_URL}landmarks/sac-04.png`,
+  `${import.meta.env.BASE_URL}landmarks/sac-05.png`,
+  `${import.meta.env.BASE_URL}landmarks/sac-06.png`,
+  `${import.meta.env.BASE_URL}landmarks/sac-07.png`
 ];
 
 function buildLandmarkLayer() {
@@ -250,7 +250,9 @@ function renderAppStructure() {
     </main>
 
     <footer class="max-w-6xl mx-auto px-4 pb-10 text-xs text-secondary">
-      Data scraped from venue sites. Always confirm details on the ticketing page.
+      Data scraped from venue sites. Always confirm details on the ticketing page. Project by
+      <a href="https://www.instagram.com/tofu.daddy/" target="_blank" rel="noopener noreferrer" class="underline text-secondary hover:text-secondary">TofuDaddy</a>.
+      <a href="https://buymeacoffee.com/tofudaddy" target="_blank" rel="noopener noreferrer" class="underline text-secondary hover:text-secondary">Buy him Coffee</a>.
     </footer>
 
     <div id="modal-container"></div>
