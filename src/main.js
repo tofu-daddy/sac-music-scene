@@ -166,7 +166,7 @@ async function init() {
     count: events.length
   });
   renderSourceFilters();
-  updateDisplay();
+  applyFilters();
 }
 
 function buildSources(events) {
